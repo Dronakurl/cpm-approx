@@ -1,0 +1,28 @@
+[package]
+name = "pykhtin-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Pykhtin (2004) multi-factor adjustment: analytical VaR and expected shortfall of a credit portfolio"
+license = "MIT"
+repository = "https://github.com/Dronakurl/pykhtin-rs"
+readme = "README.md"
+keywords = ["credit-risk", "value-at-risk", "expected-shortfall", "merton", "finance"]
+categories = ["mathematics", "finance"]
+
+[lib]
+name = "pykhtin"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pykhtin-rs"
+path = "src/main.rs"
+
+[dependencies]
+rayon = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+statrs = "0.19"
+
+[profile.release]
+opt-level = 3
+codegen-units = 16
