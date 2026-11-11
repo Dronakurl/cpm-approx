@@ -1,9 +1,19 @@
 //! Analytical VaR and expected shortfall of a credit portfolio in the multi-factor Merton model
 //! (multi-factor adjustment of Pykhtin, Risk, March 2004).
 //!
-//! Rust implementation (same formulas and conventions as the Python reference implementation): loss rates
-//! relative to total exposure, loss quantile including the expected loss, cost O(M^2) in the
-//! number of facilities (pairwise bivariate normals), parallelised over facilities.
+//! Loss rates relative to total exposure, loss quantile including the expected loss, cost O(M^2) in
+//! the number of facilities (pairwise bivariate normals), parallelised over facilities.
+//!
+//! ```
+//! use cpm_approx::paper::{table_c_portfolio, COUNTS_I};
+//! use cpm_approx::portfolio_risk;
+//!
+//! // example portfolio of the paper (Table C), correlation 0.5 between the industry factors
+//! let r = portfolio_risk(&table_c_portfolio(&COUNTS_I, 0.5), 0.999).unwrap();
+//! assert!((100.0 * r.var - 2.33).abs() < 0.015 && (100.0 * r.es - 2.76).abs() < 0.015);
+//! ```
+//!
+//! Own portfolios: [`Portfolio::from_weights`]. JSON entry point: [`analyze`] (used by the `cpm-approx` binary).
 
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
