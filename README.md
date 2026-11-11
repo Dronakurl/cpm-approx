@@ -12,8 +12,7 @@ All figures are **loss rates** relative to total exposure; the loss quantile **i
 Python 3.12 or newer, no dependencies (NumPy arrays are accepted as input).
 
 ```bash
-pip install cpm-approx            # once released on PyPI
-pip install --index-url https://test.pypi.org/simple/ cpm-approx    # current test release
+pip install cpm-approx
 ```
 
 ## Usage
