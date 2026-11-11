@@ -10,29 +10,50 @@ comparable one-factor portfolio, and the effect of several systematic factors an
 second-order correction. The result is a pair of closed-form expressions plus pairwise bivariate normal probabilities,
 evaluated in `O(M²)` time and `O(M)` memory, in parallel.
 
-This is an independent implementation of the published method; it is not affiliated with the author or the publisher.
+The crate implements the method of that paper. It is not affiliated with the author of the paper or its publisher.
 
 - All figures are **loss rates** relative to total exposure; the loss quantile **includes the expected loss**.
 - Stochastic LGD (mean and standard deviation per facility), any number of factors, any factor correlation matrix.
-- Library crate `cpm_approx` and a JSON command line tool `cpm-approx`.
+- Rust library `cpm_approx`, Python package `cpm-approx` and a JSON command line tool `cpm-approx`.
 
 ## Usage
 
-```rust
-use cpm_approx::{portfolio_risk, Portfolio};
+The examples use the portfolio of the paper (Table C: 11 factors — ten industries and a global factor —, ten buckets
+with their own PD, LGD and asset correlation, 750 facilities).
 
-let m = 100;
-let p = Portfolio::from_weights(
-    vec![0.02; m], vec![0.45; m], vec![1.0; m], vec![0.2; m],  // PD, LGD, exposure, R² (asset correlation)
-    &vec![vec![1.0, 0.5]; m],                                  // sector weights per facility
-    Some(&[vec![1.0, 0.3], vec![0.3, 1.0]]),                   // factor correlation matrix
-    vec![0.0; m],                                              // LGD standard deviation
-).unwrap();
-let r = portfolio_risk(&p, 0.999).unwrap();
-println!("VaR {:.4}  ES {:.4}  (one-factor limit {:.4})", r.var, r.es, r.var_limit);
+**Rust**
+
+```rust
+use cpm_approx::paper::{table_c_portfolio, COUNTS_I};
+use cpm_approx::portfolio_risk;
+
+let portfolio = table_c_portfolio(&COUNTS_I, 0.5);   // correlation 0.5 between the industry factors
+let r = portfolio_risk(&portfolio, 0.999).unwrap();
+println!("VaR {:.2}%  ES {:.2}%  (one-factor limit {:.2}%)", 100.0 * r.var, 100.0 * r.es, 100.0 * r.var_limit);
+// VaR 2.33%  ES 2.76%  (one-factor limit ...) — the published values of Table C
 ```
 
-Command line: JSON request on stdin (or a file path), JSON response on stdout.
+Own portfolios: `Portfolio::from_weights(pd, lgd, exposure, r2, &sector_weights, Some(&factor_correlation), lgd_std)`.
+
+**Python** (3.12 or newer; the extension is built from this crate, wheels are abi3)
+
+```python
+from cpm_approx import paper_portfolio, portfolio_risk
+
+r = portfolio_risk(**paper_portfolio(rho=0.5), confidence=0.999)
+print(f"VaR {r.var:.2%}  ES {r.es:.2%}  one-factor limit {r.var_limit:.2%}")    # VaR 2.33%  ES 2.76%
+
+# own portfolio: one entry per facility, NumPy arrays or lists
+r = portfolio_risk(pd, lgd, exposure, asset_correlation, 0.999,
+                   factor_weights=weights, factor_correlation=corr, lgd_std=lgd_std)
+```
+
+`asset_correlation` is the squared loading R² on the systematic factors. Invalid input raises `ValueError`; the GIL is
+released during the computation. Build from source: `uv sync` (needs a Rust toolchain; installs `maturin` itself).
+
+**Command line**
+
+JSON request on stdin (or a file path), JSON response on stdout.
 
 ```bash
 cargo build --release
@@ -141,10 +162,11 @@ with few facilities). Euler risk contributions per facility are not implemented.
   LGD, 99.9 %) to ±0.015 percentage points.
 - `tests/parity.rs` compares against an independent Python reference implementation on synthetic random portfolios
   (1 to 200 facilities, 1 to 10 factors, stochastic LGD, confidence up to 99.98 %), relative tolerance $10^{-9}$.
+- `tests/python/` runs the same checks (Table C, parity, input validation) through the Python bindings: `uv run pytest`.
 - Unit tests for the quadrature, the bivariate normal and the single-factor closed form.
 
-`cargo run --release --example bench -- 800 3200` prints the runtime on a synthetic portfolio. Indicative: two
-cores, 10 factors, 800 facilities ≈ 0.1 s, 3200 facilities ≈ 1.4 s (cost grows quadratically).
+`cargo run --release --example bench -- 1 4 13` prints the runtime on the portfolio of the paper scaled to 1, 4 and 13 times
+the 750 facilities. Indicative on two cores: 750 facilities ≈ 0.06 s, 3000 ≈ 0.8 s, 9750 ≈ 8.6 s (the cost grows quadratically).
 
 ## References
 

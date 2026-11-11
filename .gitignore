@@ -1,2 +1,7 @@
 /target/
 Cargo.lock.bak
+.venv/
+__pycache__/
+*.so
+dist/
+bindings/target/

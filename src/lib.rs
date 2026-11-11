@@ -361,6 +361,56 @@ pub fn portfolio_risk(p: &Portfolio, q: f64) -> Result<RiskResult, String> {
     })
 }
 
+// ---------------------------------------------------------------- example portfolio of the paper
+
+/// The example portfolio of Pykhtin (2004), Table C: 11 factors (ten industries and one global factor),
+/// ten buckets with their own PD, mean and standard deviation of the LGD and asset correlation,
+/// total exposure 1. Used for the tests, the examples and the benchmark.
+pub mod paper {
+    use super::Portfolio;
+
+    pub const PD: [f64; 10] = [0.001, 0.002, 0.002, 0.005, 0.005, 0.01, 0.01, 0.02, 0.02, 0.05];
+    pub const LGD_MEAN: [f64; 10] = [0.5, 0.3, 0.5, 0.3, 0.5, 0.3, 0.5, 0.3, 0.5, 0.3];
+    pub const LGD_STD: [f64; 10] = [0.2, 0.1, 0.2, 0.1, 0.2, 0.1, 0.2, 0.1, 0.2, 0.1];
+    /// Asset correlation loadings `r_u` (so `R^2 = r_u^2`)
+    pub const ASSET_CORRELATION: [f64; 10] = [0.6, 0.6, 0.5, 0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2];
+    /// Facilities per bucket, portfolio I of the paper (750 facilities)
+    pub const COUNTS_I: [usize; 10] = [50, 100, 50, 100, 50, 100, 50, 100, 50, 100];
+    /// Portfolio II: one fifth of portfolio I (150 facilities)
+    pub const COUNTS_II: [usize; 10] = [10, 20, 10, 20, 10, 20, 10, 20, 10, 20];
+    /// Portfolio III: concentrated in few large and many small buckets (2230 facilities)
+    pub const COUNTS_III: [usize; 10] = [10, 20, 50, 50, 100, 100, 200, 200, 500, 1000];
+
+    /// Portfolio with `counts[u]` equally sized facilities in bucket `u` (bucket exposure 0.1 each).
+    /// Industry factor `u` and the global factor are linked as `Y_u = sqrt(rho) Z_11 + sqrt(1 - rho) Z_u`;
+    /// `rho` is the correlation between the industry factors (0.1, 0.3 and 0.5 in the paper).
+    pub fn table_c_portfolio(counts: &[usize; 10], rho: f64) -> Portfolio {
+        let alpha = rho.sqrt();
+        let mut p = Portfolio {
+            pd: vec![],
+            lgd: vec![],
+            exposure: vec![],
+            r2: vec![],
+            beta: vec![],
+            lgd_std: vec![],
+        };
+        for (u, &m) in counts.iter().enumerate() {
+            let mut beta = vec![0.0; 11];
+            beta[10] = alpha;
+            beta[u] = (1.0 - alpha * alpha).sqrt();
+            for _ in 0..m {
+                p.pd.push(PD[u]);
+                p.lgd.push(LGD_MEAN[u]);
+                p.exposure.push(0.1 / m as f64);
+                p.r2.push(ASSET_CORRELATION[u] * ASSET_CORRELATION[u]);
+                p.beta.push(beta.clone());
+                p.lgd_std.push(LGD_STD[u]);
+            }
+        }
+        p
+    }
+}
+
 // ---------------------------------------------------------------- JSON entry point
 
 #[derive(Debug, Deserialize)]
