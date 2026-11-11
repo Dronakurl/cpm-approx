@@ -1,4 +1,4 @@
-//! Reads an `analyze` request (JSON, as the Python `pykhtin` library) from stdin or the file given
+//! Reads an `analyze` request (JSON) from stdin or the file given
 //! as first argument and prints the response as JSON. `RAYON_NUM_THREADS` limits the parallelism.
 use std::io::Read;
 
@@ -12,9 +12,9 @@ fn main() {
         eprintln!("error: {e}");
         std::process::exit(2);
     }
-    let out = serde_json::from_str::<pykhtin::Request>(&input)
+    let out = serde_json::from_str::<cpm_approx::Request>(&input)
         .map_err(|e| e.to_string())
-        .and_then(|r| pykhtin::analyze(&r));
+        .and_then(|r| cpm_approx::analyze(&r));
     match out {
         Ok(r) => println!("{}", serde_json::to_string(&r).expect("serialise")),
         Err(e) => {

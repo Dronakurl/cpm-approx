@@ -1,6 +1,6 @@
 //! Reproduction of the "Approx" columns of Table C in Pykhtin (2004), 11 factors (10 industries and
 //! one global factor), 10 buckets, stochastic LGD, confidence 99.9 %.
-use pykhtin::{pykhtin_risk, Portfolio};
+use cpm_approx::{portfolio_risk, Portfolio};
 
 const PD: [f64; 10] = [0.001, 0.002, 0.002, 0.005, 0.005, 0.01, 0.01, 0.02, 0.02, 0.05];
 const MU: [f64; 10] = [0.5, 0.3, 0.5, 0.3, 0.5, 0.3, 0.5, 0.3, 0.5, 0.3];
@@ -45,7 +45,7 @@ fn cases() -> Vec<(f64, [usize; 10], f64, f64)> {
 #[test]
 fn reproduces_published_table() {
     for (rho, counts, var, es) in cases() {
-        let res = pykhtin_risk(&table_portfolio(&counts, rho), 0.999).unwrap();
+        let res = portfolio_risk(&table_portfolio(&counts, rho), 0.999).unwrap();
         assert!((res.expected_loss - 0.00451).abs() < 2e-5);
         assert!((100.0 * res.var - var).abs() < 0.015, "rho {rho}: var {} vs {var}", 100.0 * res.var);
         assert!((100.0 * res.es - es).abs() < 0.015, "rho {rho}: es {} vs {es}", 100.0 * res.es);
@@ -54,6 +54,6 @@ fn reproduces_published_table() {
 
 #[test]
 fn limiting_loss_matches_published_value() {
-    let res = pykhtin_risk(&table_portfolio(&M_I, 0.5), 0.999).unwrap();
+    let res = portfolio_risk(&table_portfolio(&M_I, 0.5), 0.999).unwrap();
     assert!((100.0 * res.var_inf - 2.15).abs() < 0.015);
 }

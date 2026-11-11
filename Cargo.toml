@@ -1,20 +1,20 @@
 [package]
-name = "pykhtin-rs"
+name = "cpm-approx"
 version = "0.1.0"
 edition = "2021"
-description = "Pykhtin (2004) multi-factor adjustment: analytical VaR and expected shortfall of a credit portfolio"
+description = "Analytical VaR and expected shortfall of credit portfolios in the multi-factor Merton model (multi-factor adjustment, Risk 2004)"
 license = "MIT"
-repository = "https://github.com/Dronakurl/pykhtin-rs"
+repository = "https://github.com/Dronakurl/cpm-approx"
 readme = "README.md"
-keywords = ["credit-risk", "value-at-risk", "expected-shortfall", "merton", "finance"]
+keywords = ["credit-risk", "value-at-risk", "expected-shortfall", "merton", "portfolio"]
 categories = ["mathematics", "finance"]
 
 [lib]
-name = "pykhtin"
+name = "cpm_approx"
 path = "src/lib.rs"
 
 [[bin]]
-name = "pykhtin-rs"
+name = "cpm-approx"
 path = "src/main.rs"
 
 [dependencies]

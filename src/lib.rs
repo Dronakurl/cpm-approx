@@ -1,7 +1,7 @@
-//! Pykhtin (2004), "Multi-factor adjustment", Risk, March 2004: analytical VaR and expected
-//! shortfall of a credit portfolio in the multi-factor Merton model.
+//! Analytical VaR and expected shortfall of a credit portfolio in the multi-factor Merton model
+//! (multi-factor adjustment of Pykhtin, Risk, March 2004).
 //!
-//! Rust port of the Python library `pykhtin` (same formulas, same conventions): loss rates
+//! Rust implementation (same formulas and conventions as the Python reference implementation): loss rates
 //! relative to total exposure, loss quantile including the expected loss, cost O(M^2) in the
 //! number of facilities (pairwise bivariate normals), parallelised over facilities.
 
@@ -235,7 +235,7 @@ pub fn cholesky(a: &[Vec<f64>]) -> Result<Vec<Vec<f64>>, String> {
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub struct PykhtinResult {
+pub struct RiskResult {
     pub expected_loss: f64,
     /// Comparable one-factor portfolio
     pub var_limit: f64,
@@ -268,8 +268,8 @@ fn effective_loadings(p: &Portfolio, q: f64) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
     (a, r, w)
 }
 
-/// Pykhtin VaR and ES at confidence `q` (loss rates). Runs on the rayon thread pool.
-pub fn pykhtin_risk(p: &Portfolio, q: f64) -> Result<PykhtinResult, String> {
+/// Multi-factor-adjustment VaR and ES at confidence `q` (loss rates). Runs on the rayon thread pool.
+pub fn portfolio_risk(p: &Portfolio, q: f64) -> Result<RiskResult, String> {
     p.validate()?;
     if !(q > 0.0 && q < 1.0) {
         return Err("confidence level must lie in (0, 1)".into());
@@ -351,7 +351,7 @@ pub fn pykhtin_risk(p: &Portfolio, q: f64) -> Result<PykhtinResult, String> {
     // expected shortfall, eqs. (36)-(38)
     let es_l: f64 = (0..m).map(|i| w[i] * mu[i] * n2(cpd[i], y, a[i])).sum::<f64>() / (1.0 - q);
     let d_es = |v: f64| -1.0 / (2.0 * (1.0 - q)) * pdf(y) * v / l1;
-    Ok(PykhtinResult {
+    Ok(RiskResult {
         expected_loss: el,
         var_limit: l,
         var_inf: l + d_inf,
@@ -432,16 +432,16 @@ pub fn portfolio_from_request(req: &Request) -> Result<Portfolio, String> {
     )
 }
 
-/// Same request/response as the Python `pykhtin.analyze` (without contributions)
+/// JSON-level entry point: request in, response out (no per-facility contributions)
 pub fn analyze(req: &Request) -> Result<Response, String> {
     let q = req.confidence_level;
     if !(q > 0.0 && q < 1.0) {
         return Err("confidence_level must lie in (0, 1)".into());
     }
     let p = portfolio_from_request(req)?;
-    let r = pykhtin_risk(&p, q)?;
+    let r = portfolio_risk(&p, q)?;
     Ok(Response {
-        method: "pykhtin",
+        method: "multi-factor-adjustment",
         n_obligors: p.pd.len(),
         n_factors: p.n_factors(),
         confidence_level: q,
@@ -516,7 +516,7 @@ mod tests {
             vec![0.02; m], vec![0.45; m], vec![1.0; m], vec![0.2; m],
             &vec![vec![1.0]; m], None, vec![0.0; m],
         ).unwrap();
-        let res = pykhtin_risk(&p, 0.999).unwrap();
+        let res = portfolio_risk(&p, 0.999).unwrap();
         let vas = 0.45 * cdf((ppf(0.02) + 0.2_f64.sqrt() * ppf(0.999)) / 0.8_f64.sqrt());
         assert!((res.var_limit - vas).abs() < 1e-12);
         assert!(res.var > res.var_limit); // granularity adds
